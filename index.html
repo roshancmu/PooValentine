@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Will you be my Valentine?</title>
+  <style>
+    :root{
+      --bg:#f6c8d4;
+      --card:#f7f2f3;
+      --text:#1c1c1c;
+      --muted:#666;
+      --yes:#e94b78;
+      --yesHover:#d83e6a;
+      --no:#e6e6e6;
+      --shadow: 0 18px 50px rgba(0,0,0,.15);
+      --radius: 18px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; margin:0; font-family:var(--font); color:var(--text); }
+
+    body{
+      background: radial-gradient(1200px 800px at 30% 20%, #ffd9e3 0%, var(--bg) 55%, #f2b7c8 100%);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+
+    .wrap{
+      width:min(880px, 92vw);
+      min-height: min(520px, 92vh);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+
+    .card{
+      width:min(720px, 92vw);
+      background:rgba(247,242,243,.92);
+      border:1px solid rgba(255,255,255,.7);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding:42px 26px 26px;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+      backdrop-filter: blur(6px);
+    }
+
+    .badge{
+      width:92px; height:92px;
+      margin:0 auto 14px;
+      position:relative;
+    }
+
+    /* Simple “cute face + heart” SVG look */
+    .badge svg{ width:100%; height:100%; display:block; }
+
+    h1{
+      margin: 6px 0 18px;
+      font-size: clamp(26px, 3.2vw, 44px);
+      font-weight: 700;
+      letter-spacing: -.02em;
+    }
+
+    .controls{
+      position:relative;
+      width:min(460px, 90%);
+      height:84px;
+      margin: 0 auto 10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 26px;
+      user-select:none;
+    }
+
+    .btn{
+      border:0;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor:pointer;
+      transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+      box-shadow: 0 8px 18px rgba(0,0,0,.10);
+    }
+
+    .btn:active{ transform: translateY(1px) scale(.99); }
+
+    .btn-yes{
+      background: var(--yes);
+      color:white;
+    }
+    .btn-yes:hover{ background: var(--yesHover); }
+
+    /* "No" button is positioned absolutely inside .controls so we can move it */
+    .btn-no{
+      background: var(--no);
+      color:#333;
+      position:absolute;
+      right: 40px;
+      top: 50%;
+      transform: translateY(-50%);
+      box-shadow: 0 10px 18px rgba(0,0,0,.10);
+    }
+
+    .hint{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Success screen */
+    .success{
+      display:none;
+      padding-top: 8px;
+    }
+    .success h2{
+      margin: 10px 0 10px;
+      font-size: clamp(28px, 4vw, 46px);
+      letter-spacing:-.02em;
+    }
+    .success .imgwrap{
+      width:min(520px, 92%);
+      margin: 12px auto 0;
+      border-radius: 18px;
+      overflow:hidden;
+      border: 1px solid rgba(0,0,0,.08);
+      box-shadow: 0 18px 38px rgba(0,0,0,.14);
+      background:white;
+    }
+    .success img{
+      width:100%;
+      height:auto;
+      display:block;
+    }
+
+    /* Confetti canvas */
+    canvas#confetti{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index: 10;
+      display:none;
+    }
+
+    /* Make it look like the screenshot: Yes on left, No on right initially */
+    .btn-yes{
+      position:absolute;
+      left: 40px;
+      top:50%;
+      transform: translateY(-50%);
+      transform-origin: center;
+    }
+
+    /* Mobile tweak: more room */
+    @media (max-width: 520px){
+      .controls{ width: 100%; }
+      .btn-yes{ left: 18px; }
+      .btn-no{ right: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="confetti"></canvas>
+
+    <div class="card" id="card">
+      <div class="badge" aria-hidden="true">
+        <!-- cute face + heart -->
+        <svg viewBox="0 0 120 120">
+          <defs>
+            <linearGradient id="g" x1="0" x2="1">
+              <stop offset="0" stop-color="#ffcc9e"/>
+              <stop offset="1" stop-color="#f6b98d"/>
+            </linearGradient>
+          </defs>
+
+          <!-- head -->
+          <circle cx="58" cy="62" r="36" fill="url(#g)"/>
+          <!-- ears -->
+          <path d="M28 53 C26 38, 36 30, 44 40 C38 42, 32 47, 28 53 Z" fill="#f2ae83"/>
+          <path d="M86 53 C88 38, 78 30, 70 40 C76 42, 82 47, 86 53 Z" fill="#f2ae83"/>
+
+          <!-- heart -->
+          <path d="M94 26
+                   C99 18, 111 18, 111 30
+                   C111 44, 94 50, 94 60
+                   C94 50, 77 44, 77 30
+                   C77 18, 89 18, 94 26 Z"
+                fill="#e94b78"/>
+
+          <!-- eyes -->
+          <circle cx="46" cy="63" r="4.2" fill="#1c1c1c"/>
+          <circle cx="70" cy="63" r="4.2" fill="#1c1c1c"/>
+          <!-- nose -->
+          <path d="M58 69 L52 76 Q58 82 64 76 Z" fill="#f08aa1"/>
+        </svg>
+      </div>
+
+      <div id="ask">
+        <h1><span id="nameSlot">Rupak</span> will you be my valentine?</h1>
+
+        <div class="controls" id="controls">
+          <button class="btn btn-yes" id="yesBtn">Yes</button>
+          <button class="btn btn-no" id="noBtn">No</button>
+        </div>
+
+        <div class="hint" id="hint">“No” seems a bit shy 😈</div>
+      </div>
+
+      <div class="success" id="success">
+        <h1><span id="nameSlot2">Rupak</span> will you be my valentine?</h1>
+        <h2>YAY! 🎉</h2>
+        <div class="imgwrap">
+          <img id="successImg" alt="Celebration" />
+        </div>
+        <div class="hint" style="margin-top:14px;">Best answer. 😄</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- CONFIG ----------
+    const NAME = "Rupak"; // change
+    const SUCCESS_IMAGE_URL = "https://media.giphy.com/media/3oriO0OEd9QIDdllqo/giphy.gif";
+    // You can also use a local file: put it in the same folder and set "success.gif" or "success.png"
+
+    // How “slippery” the No button is:
+    const MOVE_ON_HOVER = true;         // desktop hover dodge
+    const MOVE_ON_POINTERDOWN = true;   // mobile tap dodge
+
+    // Yes button grows with each No attempt:
+    const YES_GROWTH_PER_NO = 0.08; // 8% per dodge
+    const YES_MAX_SCALE = 2.2;
+
+    // ---------- ELEMENTS ----------
+    const nameSlot  = document.getElementById("nameSlot");
+    const nameSlot2 = document.getElementById("nameSlot2");
+    const controls  = document.getElementById("controls");
+    const noBtn     = document.getElementById("noBtn");
+    const yesBtn    = document.getElementById("yesBtn");
+    const ask       = document.getElementById("ask");
+    const success   = document.getElementById("success");
+    const successImg= document.getElementById("successImg");
+    const hint      = document.getElementById("hint");
+
+    nameSlot.textContent = NAME;
+    nameSlot2.textContent = NAME;
+    successImg.src = SUCCESS_IMAGE_URL;
+
+    // ---------- STATE ----------
+    let noCount = 0;
+    let yesScale = 1;
+
+    // Place No button initially at right side (already in CSS)
+    // We’ll move it by setting left/top inside the controls box.
+    function moveNoButton() {
+      const rect = controls.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      // Compute bounds inside controls (in local coords)
+      const padding = 8;
+      const maxX = rect.width - btnRect.width - padding;
+      const maxY = rect.height - btnRect.height - padding;
+
+      // Random position, but avoid being too close to "Yes"
+      const yesRect = yesBtn.getBoundingClientRect();
+      const yesLocal = {
+        x: yesRect.left - rect.left,
+        y: yesRect.top  - rect.top,
+        w: yesRect.width,
+        h: yesRect.height
+      };
+
+      let x, y, tries = 0;
+      do {
+        x = padding + Math.random() * (maxX - padding);
+        y = padding + Math.random() * (maxY - padding);
+        tries++;
+        if (tries > 25) break;
+      } while (overlaps(x, y, btnRect.width, btnRect.height, yesLocal.x, yesLocal.y, yesLocal.w, yesLocal.h));
+
+      // Apply
+      noBtn.style.left = `${x}px`;
+      noBtn.style.top  = `${y}px`;
+      noBtn.style.right = "auto";
+      noBtn.style.transform = "translate(0,0)";
+    }
+
+    function overlaps(ax, ay, aw, ah, bx, by, bw, bh){
+      const pad = 10;
+      return !(
+        ax + aw < bx - pad ||
+        ax > bx + bw + pad ||
+        ay + ah < by - pad ||
+        ay > by + bh + pad
+      );
+    }
+
+    function growYes() {
+      noCount++;
+      yesScale = Math.min(YES_MAX_SCALE, 1 + noCount * YES_GROWTH_PER_NO);
+      yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
+
+      if (noCount >= 3) hint.textContent = "Come on… you know you want to click Yes 😌";
+      if (noCount >= 6) hint.textContent = "No button is in full escape mode 🏃‍♂️💨";
+      if (noCount >= 9) hint.textContent = "At this point, it’s basically Yes 🤝";
+    }
+
+    // ---------- EVENTS ----------
+    if (MOVE_ON_HOVER) {
+      noBtn.addEventListener("mouseenter", () => {
+        moveNoButton();
+        growYes();
+      });
+    }
+
+    if (MOVE_ON_POINTERDOWN) {
+      noBtn.addEventListener("pointerdown", (e) => {
+        // Prevent “click” on mobile; instead dodge.
+        e.preventDefault();
+        moveNoButton();
+        growYes();
+      });
+    }
+
+    // If it somehow gets clicked (keyboard etc.), still dodge.
+    noBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      moveNoButton();
+      growYes();
+    });
+
+    yesBtn.addEventListener("click", () => {
+      ask.style.display = "none";
+      success.style.display = "block";
+      startConfetti();
+    });
+
+    // ---------- CONFETTI ----------
+    const canvas = document.getElementById("confetti");
+    const ctx = canvas.getContext("2d");
+
+    let confetti = [];
+    let rafId = null;
+    let running = false;
+
+    function resizeCanvas(){
+      const cardRect = document.getElementById("card").getBoundingClientRect();
+      canvas.width = Math.floor(cardRect.width);
+      canvas.height = Math.floor(cardRect.height);
+    }
+
+    function startConfetti(){
+      canvas.style.display = "block";
+      resizeCanvas();
+
+      confetti = Array.from({length: 180}, () => makePiece());
+      running = true;
+
+      const tick = () => {
+        if (!running) return;
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        for (const p of confetti){
+          p.vy += 0.03;     // gravity
+          p.x  += p.vx;
+          p.y  += p.vy;
+          p.rot += p.vr;
+
+          // wrap / respawn
+          if (p.y > canvas.height + 20){
+            p.y = -10;
+            p.x = Math.random() * canvas.width;
+            p.vy = 0.2 + Math.random() * 1.2;
+          }
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rot);
+          ctx.fillStyle = p.c;
+          ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          ctx.restore();
+        }
+        rafId = requestAnimationFrame(tick);
+      };
+
+      window.addEventListener("resize", resizeCanvas, {passive:true});
+      tick();
+
+      // auto-stop after a bit (optional)
+      setTimeout(() => { stopConfetti(); }, 6000);
+    }
+
+    function stopConfetti(){
+      running = false;
+      if (rafId) cancelAnimationFrame(rafId);
+      canvas.style.display = "none";
+    }
+
+    function makePiece(){
+      const colors = ["#e94b78","#ffcc66","#66d1ff","#7cf0b8","#b892ff","#ff8fb1"];
+      return {
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        vx: -1.2 + Math.random() * 2.4,
+        vy: 0.2 + Math.random() * 1.2,
+        w: 6 + Math.random() * 8,
+        h: 8 + Math.random() * 14,
+        rot: Math.random() * Math.PI,
+        vr: -0.12 + Math.random() * 0.24,
+        c: colors[(Math.random()*colors.length)|0]
+      };
+    }
+
+    // Make first dodge feel instant by pre-positioning after layout
+    window.addEventListener("load", () => {
+      // Ensure absolute positioning works
+      // Keep initial CSS position; optional “warm-up”
+    });
+  </script>
+</body>
+</html>
