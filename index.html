@@ -186,7 +186,7 @@
           <img id="personalImg" alt="My photo" />
         </div>
 
-        <!-- Optional: keep a celebration GIF below (can remove if you want) 
+        <!-- Optional: keep a celebration GIF below (can remove if you want)
         <div class="imgwrap" style="margin-top:14px;">
           <img id="successGif" alt="Celebration GIF" />
         </div>  -->
@@ -211,6 +211,14 @@
     const YES_GROWTH_PER_NO = 0.08;     // 8% per dodge
     const YES_MAX_SCALE = 2.2;
 
+    // ---------- EMAIL NOTIFICATION CONFIG ----------
+    // 1) Create a Formspree form and paste your endpoint URL here:
+   const FORMSPREE_URL = "https://fs8.formsite.com/6Kfc5F/vs5nd9kjzt/index";
+ // <-- REPLACE THIS
+
+    // 2) Avoid spam: email every N "No" dodges (3 = send on 3rd, 6th, 9th, ...)
+    const EMAIL_NO_EVERY = 3;
+
     // ---------- ELEMENTS ----------
     const nameSlot   = document.getElementById("nameSlot");
     const nameSlot2  = document.getElementById("nameSlot2");
@@ -230,6 +238,57 @@
 
     if (SUCCESS_GIF_URL && successGif) {
       successGif.src = SUCCESS_GIF_URL;
+    }
+
+    // ---------- EMAIL HELPERS ----------
+    function sendEmail(payload) {
+      if (!FORMSPREE_URL || FORMSPREE_URL.includes("xxxx")) return; // safety if not set
+      fetch(FORMSPREE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    }
+
+    function deviceTag() {
+      const key = "val_device_id";
+      let id = localStorage.getItem(key);
+      if (!id) {
+        id = Math.random().toString(16).slice(2) + "-" + Date.now().toString(16);
+        localStorage.setItem(key, id);
+      }
+      return id;
+    }
+
+    function notifyYes() {
+      // Send YES only once per device
+      const sentKey = "val_yes_sent";
+      if (localStorage.getItem(sentKey) === "1") return;
+      localStorage.setItem(sentKey, "1");
+
+      sendEmail({
+        event: "YES_CLICKED",
+        name: NAME,
+        noAttemptsBeforeYes: noCount,
+        timeISO: new Date().toISOString(),
+        device: deviceTag(),
+        userAgent: navigator.userAgent
+      });
+    }
+
+    function notifyNoAttempt() {
+      // Send on every Nth attempt to reduce spam
+      if (EMAIL_NO_EVERY <= 0) return;
+      if (noCount % EMAIL_NO_EVERY !== 0) return;
+
+      sendEmail({
+        event: "NO_ATTEMPT",
+        name: NAME,
+        noAttemptCount: noCount,
+        timeISO: new Date().toISOString(),
+        device: deviceTag(),
+        userAgent: navigator.userAgent
+      });
     }
 
     // ---------- STATE ----------
@@ -278,6 +337,10 @@
 
     function growYes() {
       noCount++;
+
+      // Email on NO attempts (throttled)
+      notifyNoAttempt();
+
       yesScale = Math.min(YES_MAX_SCALE, 1 + noCount * YES_GROWTH_PER_NO);
       yesBtn.style.transform = `translateY(-50%) scale(${yesScale})`;
 
@@ -309,6 +372,9 @@
     });
 
     yesBtn.addEventListener("click", () => {
+      // Email on YES click
+      notifyYes();
+
       ask.style.display = "none";
       success.style.display = "block";
       startConfetti();
@@ -389,6 +455,3 @@
   </script>
 </body>
 </html>
-
-
-
